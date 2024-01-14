@@ -1,16 +1,16 @@
-time_horizon: 30
-time_step: 0.50
+time_horizon: 10
+time_step: 0.05
 slack: False
 interval: 1
 number_obstacles: 0
 lower_limits: 
   state: [-10, -10, -10]
-  action: [-1, -0.2]
+  action: [-7, -0.5]
   slack: [0]
 upper_limits: 
   state: [10, 10, 10]
-  action: [1.0, 0.2]
+  action: [7.0, 0.5]
   slack: [inf]
-model_length: 0.2
+model_length: 0.3
 model_radius: 0.1
-debug: True
+debug: False

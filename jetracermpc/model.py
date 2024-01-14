@@ -174,7 +174,7 @@ class JetRacerModel():
         xdot = ca.vcat([
             action[0]*ca.cos(state[2]),
             action[0]*ca.sin(state[2]),
-            action[0]*ca.tan(action[1])/self._config.model_length,
+            0.5 * action[0]*ca.tan(action[1])/self._config.model_length,
         ])
         return xdot
 

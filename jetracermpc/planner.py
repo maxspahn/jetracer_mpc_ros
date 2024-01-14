@@ -94,21 +94,20 @@ class MPCPlanner():
             z = self._x0[stage_id]
             xinit = self._xinit
             #print(f"parameters: {p}")
-            print(f"state: {z}")
+            #print(f"state: {z}")
             #print(f"xinit: {xinit}")
             print("----DEBUGGING----")
         output, exitflag, info = self._solver.solve(problem)
         if exitflag < 0:
             print(exitflag)
-        if self._model.time_horizon < 10:
-            key1 = 'x1'
-        elif self._model.time_horizon >= 10 and self._model.time_horizon < 100:
-            key1 = 'x01'
-        elif self._model.time_horizon >= 100:
-            key1 = 'x001'
+        key1 = f'x{str(1).zfill(len(str(self._model.time_horizon)))}'
         action = output[key1][self.model.n_state: self.model.n_state + self.model.n_action]
-        print('action : ', action)
-        # print("prediction : ", output["x02"][0:self._nx])
         self.shift_horizon(output)
         return action, info
+
+    def predicted_states(self) -> np.ndarray:
+        predicted_states = np.zeros((self.model.time_horizon, self.model.n_state))
+        for stage_id in range(self.model.time_horizon):
+            predicted_states[stage_id, : ]= self._x0[stage_id][0: self.model.n_state]
+        return predicted_states
 
