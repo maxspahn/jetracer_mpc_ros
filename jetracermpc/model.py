@@ -37,8 +37,7 @@ class JetRacerModel():
         self._n_goal = 2
         self._n_state = 3
         self._n_slack = 1
-        self._n_obst = self._config.number_obstacles
-        self._m_obst = 3
+        self._size_obstacles = 3
         self._N = self._config.time_horizon
         self._npar = 0
         self.initParamMap()
@@ -46,6 +45,14 @@ class JetRacerModel():
     @property
     def n_all(self) -> int:
         return self._n_state + self._n_slack + self._n_action
+
+    @property
+    def number_obstacles(self) -> int:
+        return self._config.number_obstacles
+
+    @property
+    def size_obstacles(self) -> int:
+        return self._size_obstacles
 
     @property
     def n_state(self) -> int:
@@ -138,32 +145,25 @@ class JetRacerModel():
         return Jx + Jvel + Js + Jobst + Ju
 
     def eval_inequalities(self, z, p):
-        all_ineqs = self.eval_obstacleDistances(z, p)
-        slack = z[self.n_all]
+        all_ineqs = self.eval_obstacle_distances(z, p)
+        slack = z[self.n_all - 1]
         for ineq in all_ineqs:
             ineq  += slack
         return all_ineqs
 
-    def eval_obstacleDistances(self, z, p):
+    def eval_obstacle_distances(self, z, p):
         ineqs = []
         state = z[0:3]
-        slack = z[self.n_all]
-        if "obst" in self._paramMap.keys():
-            obsts = p[self._paramMap["obst"]]
-            r_body = p[self._paramMap["r_body"]]
-            for j, collision_link in enumerate(self._robot_config.collision_links):
-                fk = self._fk.fk(
-                    q,
-                    self._robot_config.root_link,
-                    collision_link,
-                    positionOnly=True
-                )[0:self._m]
-                for i in range(self._config.number_obstacles):
-                    obst = obsts[i * (self._m_obst + 1) : (i + 1) * (self._m_obst + 1)]
-                    x = obst[0 : self._m_obst]
-                    r = obst[self._m_obst]
-                    dist = ca.norm_2(fk - x)
-                    ineqs.append(dist - r - r_body)
+        obstacle_parameters = p[self._paramMap["obstacles"]]
+        parameters_per_obstacle = self.size_obstacles + 1
+        for obstacle_index in range(self._config.number_obstacles):
+            start_index = obstacle_index * parameters_per_obstacle
+            end_index = start_index + parameters_per_obstacle
+            obstacle_i_parameters = obstacle_parameters[start_index: end_index]
+            position = obstacle_i_parameters[0 : self.size_obstacles]
+            radius = obstacle_i_parameters[self.size_obstacles]
+            distance = ca.norm_2(state[0:2] - position[0:2])
+            ineqs.append(distance - radius - self._config.model_length)
         return ineqs
 
 

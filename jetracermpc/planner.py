@@ -1,3 +1,4 @@
+from typing import List
 from jetracermpc.model import JetRacerModel
 import pickle
 import forcespro
@@ -65,17 +66,36 @@ class MPCPlanner():
         for stage_index in range(self.model.time_horizon):
             self._params[self.model.n_parameters * stage_index + parameter_index] = value
 
+    def set_parameters_across_stages(self, parameter_indices: List[int], values: np.ndarray):
+        assert len(parameter_indices) == values.size
+        for stage_index in range(self.model.time_horizon):
+            indices = self.model.n_parameters * stage_index + np.array(parameter_indices)
+            self._params[indices.tolist()] = values
+
     def set_uniform_goal_weight(self, value: float) -> None:
         for weight_index in range(self.model.n_goal):
             parameter_index = self.model.parameter_map['weight_goal'][weight_index]
             self.set_parameter_across_stages(parameter_index, value)
 
 
+    def set_obstacles(self, obstacle_positions: np.ndarray, radii: np.ndarray) -> None:
+        assert obstacle_positions.shape[0] == self.model.number_obstacles
+        assert obstacle_positions.shape[1] == self.model.size_obstacles
+        assert radii.size == self.model.number_obstacles
+        obstacle_parameters = np.concatenate((
+            obstacle_positions, radii[:, np.newaxis]
+        ), axis=1).flatten()
+        self.set_parameters_across_stages(
+                self.model.parameter_map['obstacles'],
+                obstacle_parameters,
+        )
+
     def set_goal(self, goal_position: np.ndarray) -> None:
         assert goal_position.size == self.model.n_goal
-        for goal_index in range(self.model.n_goal):
-            parameter_index = self.model.parameter_map['goal'][goal_index]
-            self.set_parameter_across_stages(parameter_index,goal_position[goal_index])
+        self.set_parameters_across_stages(
+                self.model.parameter_map['goal'],
+                goal_position
+        )
 
     def solve(self, xinit):
         self._xinit = xinit

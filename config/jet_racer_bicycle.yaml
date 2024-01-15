@@ -2,7 +2,7 @@ time_horizon: 10
 time_step: 0.05
 slack: False
 interval: 1
-number_obstacles: 0
+number_obstacles: 3
 lower_limits: 
   state: [-10, -10, -10]
   action: [-7, -0.5]

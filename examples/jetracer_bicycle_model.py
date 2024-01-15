@@ -1,7 +1,8 @@
 import sys
 import time
-from mpscenes.goals.goal_composition import GoalComposition
+from typing import List
 from mpscenes.goals.static_sub_goal import StaticSubGoal
+from mpscenes.obstacles.sphere_obstacle import SphereObstacle
 import yaml
 import pickle
 import numpy as np
@@ -18,14 +19,78 @@ class Simulation():
     _state: np.ndarray
     _dt: float
     _env: UrdfEnv
+    _obstacles: List[List[float]]
+    _radii: List[float]
+    _goal: np.ndarray
 
     def __init__(self):
         self._planner = MPCPlanner(sys.argv[1])
         self._state = np.zeros(3)
+        self._obstacles = []
+        self._radii = []
+        self.create_environment()
+        self._planner.set_goal(self._goal)
+        self._planner.set_obstacles(
+            np.array(self._obstacles),
+            np.array(self._radii),
+        )
+        self._planner.set_uniform_goal_weight(1)
+
+    def create_environment(self):
+        self._obstacles = [
+            [2.0, 0.0, 0.0],
+            [2.0, 2.0, 0.0],
+            [3.0, -1.0, 0.0],
+        ]
+        self._radii = [
+            0.3,
+            0.5,
+            0.1,
+        ]
+            
         self._dt = 0.05
         self._goal = np.array([float(sys.argv[2]), float(sys.argv[3])])
-        self._planner.set_goal(self._goal)
-        self._planner.set_uniform_goal_weight(1)
+        robots = [
+            BicycleModel(
+                urdf='examples/racecar/racecar.urdf',
+                mode="vel",
+                scaling=1.000,
+                wheel_radius = 0.31265,
+                wheel_distance = 0.494,
+                spawn_offset = np.array([-0.435, 0.0, 0.05]),
+                actuated_wheels=[
+                    'right_front_wheel_joint',
+                    'left_front_wheel_joint',
+                    'right_rear_wheel_joint',
+                    'left_rear_wheel_joint'
+                ],
+                steering_links=[
+                    'right_steering_hinge_joint',
+                    'left_steering_hinge_joint',
+                ],
+            )
+        ]
+        self._env = UrdfEnv(
+                robots,
+                render=True,
+                enforce_real_time = False,
+                dt=self._dt,
+                num_sub_steps=20,
+                observation_checking=False
+        )
+        for obstacle_index, obstacle_position in enumerate(self._obstacles):
+            radius = self._radii[obstacle_index]
+            obstacle_data = {
+                "type": "sphere",
+                "movable": False,
+                "geometry": {
+                    "position": obstacle_position, 
+                    "radius": radius
+                },
+            }
+            obstacle = SphereObstacle(name=f"sphere_{obstacle_index}", content_dict=obstacle_data)
+            self._env.add_obstacle(obstacle)
+        self.init_path_visualization()
 
     def run_dry(self):
         for i in range(100):
@@ -69,28 +134,6 @@ class Simulation():
             
 
     def run(self):
-        robots = [
-            BicycleModel(
-                urdf='examples/racecar/racecar.urdf',
-                mode="vel",
-                scaling=1.000,
-                wheel_radius = 0.31265,
-                wheel_distance = 0.494,
-                spawn_offset = np.array([-0.435, 0.0, 0.05]),
-                actuated_wheels=[
-                    'right_front_wheel_joint',
-                    'left_front_wheel_joint',
-                    'right_rear_wheel_joint',
-                    'left_rear_wheel_joint'
-                ],
-                steering_links=[
-                    'right_steering_hinge_joint',
-                    'left_steering_hinge_joint',
-                ],
-            )
-        ]
-        self._env = UrdfEnv(robots, render=True, enforce_real_time = False, dt=self._dt, num_sub_steps=20, observation_checking=False)
-        self.init_path_visualization()
         ob, *_ = self._env.reset()
         state = ob['robot_0']['joint_state']['position']
         for i in range(1000):
@@ -114,7 +157,9 @@ class Simulation():
             #print(f"action : {action}")
             #print(f"observed_action: {observed_action}")
             compute_time = t1 - t0
-            time.sleep(self._dt-compute_time)
+            sleep_time = self._dt - compute_time
+            if sleep_time > 0:
+                time.sleep(sleep_time)
         self._env.close()
 
 
