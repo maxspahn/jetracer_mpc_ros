@@ -11,7 +11,6 @@ import gymnasium as gym
 from urdfenvs.urdf_common.bicycle_model import BicycleModel
 from urdfenvs.urdf_common.urdf_env import UrdfEnv
 from jetracermpc.planner import MPCPlanner
-from jetracermpc.model import JetRacerModel
 
 class Simulation():
 
@@ -35,6 +34,9 @@ class Simulation():
             np.array(self._radii),
         )
         self._planner.set_uniform_goal_weight(1)
+        self._planner.set_action_weight(np.array([0.0, 0.]))
+        self._planner.set_uniform_obstacles_weight(0.0)
+        self._planner.set_uniform_slack_weight(0)
 
     def create_environment(self):
         self._obstacles = [
@@ -43,9 +45,9 @@ class Simulation():
             [3.0, -1.0, 0.0],
         ]
         self._radii = [
-            0.3,
+            0.6,
             0.5,
-            0.1,
+            0.3,
         ]
             
         self._dt = 0.05
